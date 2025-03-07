@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat con DeepSeek</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.18/marked.min.js"></script>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-5">
+
+    <div class="w-full max-w-lg bg-white shadow-lg rounded-lg p-6 flex flex-col">
+        <h1 class="text-2xl font-bold text-gray-800 mb-4 text-center">Chat con DeepSeek</h1>
+
+        <!-- Área de chat -->
+        <div id="chat-box" class="border border-gray-300 bg-gray-50 p-4 rounded-md text-lg overflow-auto min-h-[300px] max-h-[500px] mb-4 flex flex-col space-y-2">
+            <div class="text-gray-500 text-sm text-center">Inicia la conversación...</div>
+        </div>
+
+        <!-- Indicador de carga -->
+        <div id="loading" class="hidden text-center text-gray-500 text-sm mb-2">✍️ Escribiendo...</div>
+
+        <!-- Controles de chat -->
+        <div class="flex space-x-2">
+            <form id="chat-form" class="flex flex-1">
+                <input type="text" id="message-input" class="flex-1 border border-gray-300 rounded-l-md px-3 py-2 focus:outline-none" placeholder="Escribe un mensaje..." required>
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-r-md hover:bg-blue-600">Enviar</button>
+            </form>
+            <button id="clear-chat" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">🗑️</button>
+        </div>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const loadingIndicator = document.getElementById('loading');
+        const clearChatButton = document.getElementById('clear-chat');
+
+        // Función para agregar mensajes al chat
+        function appendMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('p-2', 'rounded-md', 'max-w-[80%]');
+
+            if (role === 'user') {
+                messageDiv.classList.add('bg-blue-500', 'text-white', 'self-end');
+                messageDiv.textContent = content; // Se muestra el mensaje del usuario sin formato Markdown
+            } else {
+                messageDiv.classList.add('bg-gray-300', 'text-black', 'self-start', 'text-sm');
+                messageDiv.innerHTML = marked.parse(content); // Se renderiza la respuesta de la IA en Markdown
+            }
+
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Evento para enviar mensaje
+        chatForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const userMessage = messageInput.value.trim();
+            if (!userMessage) return;
+
+            // Agregar mensaje del usuario al chat
+            appendMessage('user', userMessage);
+            messageInput.value = '';
+
+            // Mostrar indicador de carga
+            loadingIndicator.classList.remove('hidden');
+
+            try {
+                // Enviar mensaje al backend (POST /chat)
+                const chatResponse = await fetch('http://localhost:3000/deepseek/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: userMessage }),
+                });
+
+                const chatData = await chatResponse.json();
+                if (!chatData.response) throw new Error("No response from API");
+
+                // Mostrar la respuesta correctamente con Markdown y texto más pequeño
+                appendMessage('assistant', chatData.response);
+            } catch (error) {
+                console.error("Error:", error);
+                appendMessage('assistant', 'Error al obtener la respuesta.');
+            } finally {
+                loadingIndicator.classList.add('hidden');
+            }
+        });
+
+                // Evento para limpiar el chat
+                clearChatButton.addEventListener('click', () => {
+                    chatBox.innerHTML = '<div class="text-gray-500 text-sm text-center">Inicia la conversación...</div>';
+                });
+            </script>
+
+        </body>
+        </html>
+        
